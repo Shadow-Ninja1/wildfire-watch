@@ -1,36 +1,61 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# 🔥 Ember Watch
 
-## Getting Started
+A small Next.js app for wildfire preparedness. It has three pages:
 
-First, run the development server:
+| Page | What it does | Next.js / React idea it shows |
+| --- | --- | --- |
+| `/` **Risk** | Pulls live weather for your location (or a preset city) and scores fire risk from 0 to 100. Sliders let you try "what if" conditions. | API route (server), `fetch`, `useState`, browser geolocation |
+| `/protect` **Protect** | Defensible-space checklist (CAL FIRE zones 0–2 + home hardening) with a readiness score. | Client component, derived state, `localStorage` |
+| `/escape` **Escape Plan** | Meeting spot, two routes, out-of-area contact, go-bag checklist, "Ready, Set, Go". Printable. | Controlled form inputs, a custom hook, print CSS |
+
+## Run it
 
 ```bash
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Then open http://localhost:3000.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## How it's organized
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```
+src/
+  app/
+    layout.tsx              shared shell: nav + footer, wraps every page
+    page.tsx                "/"        (home / risk)
+    protect/page.tsx        "/protect"
+    escape/page.tsx         "/escape"
+    api/conditions/route.ts GET /api/conditions?lat=..&lon=..  (runs on the server)
+  components/               interactive pieces ("use client")
+  lib/
+    risk.ts                 the scoring formula (plain TypeScript, no React)
+    useSavedState.ts        useState that saves to localStorage
+```
 
-## Learn More
+**Each folder in `app/` becomes a URL.** `app/protect/page.tsx` is `/protect`. That's file-based routing.
 
-To learn more about Next.js, take a look at the following resources:
+**Server vs client components.** Pages are server components by default. Anything with clicks, state or
+browser APIs (`navigator.geolocation`, `localStorage`, `window.print`) lives in a file starting with
+`"use client"`.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+**The API route.** The browser calls `/api/conditions`, our own server code. That code calls the free
+[Open-Meteo](https://open-meteo.com) weather API (no key needed), counts the dry days, and returns a score.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## The risk score
 
-## Deploy on Vercel
+A simplified teaching model inspired by the Hot-Dry-Windy Index, **not** an official forecast:
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+- Heat: up to 25 points (50°F → 0, 100°F+ → 25)
+- Dry air: up to 30 points (60% humidity → 0, 10% or less → 30)
+- Wind: up to 30 points (0 → 0, 40 mph+ → 30)
+- Dry streak: up to 15 points (two weeks without rain → 15)
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+A 🚩 Red Flag banner shows when humidity ≤ 15% and wind ≥ 25 mph, roughly the National Weather Service
+criteria.
+
+## Ideas to extend it
+
+- Show active fires on a map with NASA FIRMS data (free API key) + Leaflet
+- Use the 7-day forecast to warn about high-risk days ahead
+- Send the escape plan to family as a shareable link
